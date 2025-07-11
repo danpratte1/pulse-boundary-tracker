@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { createClient, User } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://ggmsdbfkyscmjesusmsz.supabase.co',
@@ -16,10 +17,12 @@ export default function Dashboard() {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
         console.error('[Auth Error]', error.message);
+        setLoading(false);
+        return;
       }
       if (!data.session) {
-        console.warn('[No Session] User not logged in');
-        setLoading(false); // stop loading even if no session
+        console.warn('[No Session]');
+        setLoading(false);
         return;
       }
       setUser(data.session.user);
@@ -33,9 +36,7 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoading(true);
-      console.log('[Fetching Violations] for', user.email);
-
-      const isAdmin = user.email.includes('@admin');
+      const isAdmin = user.email?.includes('@admin');
 
       const { data, error } = await supabase
         .from('violations')
@@ -43,9 +44,10 @@ export default function Dashboard() {
         .order('logged_at', { ascending: false });
 
       if (error) {
-        console.error('[Data Fetch Error]', error.message);
+        console.error('[Data Error]', error.message);
       } else {
-        setViolations(isAdmin ? data : data.filter(v => v.email === user.email));
+        const filtered = isAdmin ? data : data.filter(v => v.email === user.email);
+        setViolations(filtered);
       }
 
       setLoading(false);
@@ -60,18 +62,15 @@ export default function Dashboard() {
   }, {});
 
   if (loading) return <p>Loading...</p>;
-
-  if (!user) return <p>No user session found. Are you signed in?</p>;
+  if (!user) return <p>No user session found.</p>;
 
   return (
     <div style={{ padding: '2rem' }}>
-      <h2>{user.email.includes('@admin') ? 'Admin View' : 'My Violations'}</h2>
+      <h2>{user.email?.includes('@admin') ? 'Admin View' : 'My Violations'}</h2>
       <ul>
-        {user.email.includes('@admin')
+        {user.email?.includes('@admin')
           ? Object.entries(countByEmployee).map(([email, count]) => (
-              <li key={email}>
-                {email}: {count} violations
-              </li>
+              <li key={email}>{email}: {count} violations</li>
             ))
           : violations.map((v) => (
               <li key={v.event_id + v.email}>
