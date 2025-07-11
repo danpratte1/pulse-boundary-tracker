@@ -11,7 +11,7 @@
     <script type="module">
       import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-      const supabase = createClient("https://YOUR_PROJECT_REF.supabase.co", "YOUR_ANON_KEY");
+      const supabase = createClient("https://ggmsdbfkyscmjesusmsz.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbXNkYmZreXNjbWplc3VzbXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxNzM2MzQsImV4cCI6MjA2Nzc0OTYzNH0.gcZRosVQ9AW-WeQ7jdw0kabb9z4aX-pHYURwj3wBF4s");
 
       document.getElementById("login").addEventListener("click", async () => {
         await supabase.auth.signInWithOAuth({
