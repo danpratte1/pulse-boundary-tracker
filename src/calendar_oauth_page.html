@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Calendar OAuth Callback</title>
+  </head>
+  <body>
+    <h2>Boundary Tracker</h2>
+    <div id="app"></div>
+
+    <script type="module">
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+      const supabase = createClient("https://YOUR_PROJECT_REF.supabase.co", "YOUR_ANON_KEY");
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (!session) {
+        document.getElementById("app").innerHTML = `<p>No session — <a href='/'>log in again</a>.</p>`;
+      } else {
+        const user = session.user;
+        document.getElementById("app").innerHTML = `
+          <div>
+            <p>Session: ${user.email}</p>
+            <button id="connect-calendar">Connect Calendar</button>
+          </div>
+        `;
+
+        document.getElementById("connect-calendar").addEventListener("click", async () => {
+          const token = session.provider_token;
+          const calendarResponse = await fetch(
+            "https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const result = await calendarResponse.json();
+          console.log("Calendar Events:", result);
+        });
+      }
+    </script>
+  </body>
+</html>
