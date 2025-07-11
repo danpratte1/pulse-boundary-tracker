@@ -1,104 +1,92 @@
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import type {User } from '@supabase/supabase-js'; // ⬅ type-only import ✅
+// src/Dashboard.tsx
+import { useEffect, useState } from "react";
 
-/* ────────────────────────────────────────────────────────────────── */
-/* Supabase initialisation                                            */
-/* ────────────────────────────────────────────────────────────────── */
-const supabaseUrl  = 'https://ggmsdbfkyscmjesusmsz.supabase.co';
-const supabaseAnon = 'eyJh...BF4s';            // ← keep your anon key
-const sb = createClient(supabaseUrl, supabaseAnon);
+const CLIENT_ID = "<YOUR_GOOGLE_CLIENT_ID>";
+const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 
-/* ────────────────────────────────────────────────────────────────── */
-/* Component                                                          */
-/* ────────────────────────────────────────────────────────────────── */
+declare global {
+  interface Window {
+    gapi: any;
+  }
+}
+
 export default function Dashboard() {
-  const [user, setUser]           = useState<User | null>(null);
-  const [violations, setViolations] = useState<any[]>([]);
-  const [loading, setLoading]     = useState<boolean>(true);
+  const [gapiLoaded, setGapiLoaded] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
 
-  /* 1️⃣  Get current session (runs once) */
   useEffect(() => {
-    const init = async () => {
-      const { data, error } = await sb.auth.getSession();
-      if (error) console.error('Auth error →', error.message);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
+    const loadGapi = () => {
+      const script = document.createElement("script");
+      script.src = "https://apis.google.com/js/api.js";
+      script.onload = () => {
+        window.gapi.load("client:auth2", initClient);
+      };
+      document.body.appendChild(script);
     };
-    init();
+
+    const initClient = async () => {
+      try {
+        await window.gapi.client.init({
+          clientId: CLIENT_ID,
+          scope: SCOPES,
+        });
+        setGapiLoaded(true);
+      } catch (err) {
+        console.error("Error initializing gapi", err);
+      }
+    };
+
+    loadGapi();
   }, []);
 
-  /* 2️⃣  Fetch violations whenever `user` changes */
-  useEffect(() => {
-    if (!user) return;
+  const signInAndFetch = async () => {
+    const authInstance = window.gapi.auth2.getAuthInstance();
+    const user = await authInstance.signIn();
 
-    const fetchViolations = async () => {
-      setLoading(true);
-      const isAdmin = user.email?.includes('@admin');
+    const token = user.getAuthResponse().access_token;
 
-      const { data, error } = await sb
-        .from('violations')
-        .select('*')
-        .order('logged_at', { ascending: false });
-
-      if (error) console.error('Data error →', error.message);
-      else setViolations(isAdmin ? data : data.filter(v => v.email === user.email));
-
-      setLoading(false);
-    };
-
-    fetchViolations();
-  }, [user]);
-
-  /* 3️⃣  Derived data (admin only) */
-  const counts = violations.reduce<Record<string, number>>((acc, v) => {
-    acc[v.email] = (acc[v.email] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  /* 4️⃣  Sign-in / sign-out helpers */
-  const signIn = () => sb.auth.signInWithOAuth({ provider: 'google' });
-  const signOut = () => sb.auth.signOut();
-
-  /* ──────────────────────────────────────────────────────────────── */
-  /* Render                                                          */
-  /* ──────────────────────────────────────────────────────────────── */
-  if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>;
-
-  if (!user)
-    return (
-      <div style={{ padding: '2rem' }}>
-        <button onClick={signIn}>Connect Google&nbsp;Account</button>
-      </div>
-    );
-
-  const isAdmin = user.email?.includes('@admin');
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&singleEvents=true&orderBy=startTime",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      setEvents(data.items || []);
+    } catch (err) {
+      console.error("Error fetching calendar events", err);
+    }
+  };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h2>{isAdmin ? 'Admin View' : 'My Violations'}</h2>
-
-      {isAdmin ? (
-        <ul>
-          {Object.entries(counts).map(([email, count]) => (
-            <li key={email}>
-              {email}: <strong>{count}</strong> violation{count !== 1 && 's'}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul>
-          {violations.map(v => (
-            <li key={v.event_id + v.email}>
-              {new Date(v.start_time).toLocaleString()} – {v.summary}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <button style={{ marginTop: '1rem' }} onClick={signOut}>
-        Sign&nbsp;out
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-xl font-bold mb-4">Boundary Tracker</h1>
+      <p className="mb-4">
+        Connect your Google Calendar – we’ll flag meetings that break boundaries.
+      </p>
+      <button
+        onClick={signInAndFetch}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+        disabled={!gapiLoaded}
+      >
+        Connect Calendar
       </button>
+
+      {events.length > 0 && (
+        <div className="mt-8 w-full max-w-xl text-left">
+          <h2 className="font-semibold mb-2">Upcoming Events:</h2>
+          <ul>
+            {events.map((event) => (
+              <li key={event.id}>
+                {event.summary} — {event.start.dateTime || event.start.date}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
