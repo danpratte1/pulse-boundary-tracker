@@ -32,6 +32,7 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoading(true);
+      console.log('[Dashboard] fetching violations…');
 
       const isAdmin = user.email.includes('@admin');
 
@@ -41,9 +42,11 @@ export default function Dashboard() {
         .order('logged_at', { ascending: false });
 
       if (error) console.error('Data error:', error);
-      else setViolations(isAdmin ? data : data.filter(v => v.email === user.email));
+      else 
+      console.log('[Dashboard] rows returned:', data.length);setViolations(isAdmin ? data : data.filter(v => v.email === user.email));
 
       setLoading(false);
+      console.log('[Dashboard] loading=false');  
     };
 
     fetchData();
