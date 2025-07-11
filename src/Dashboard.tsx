@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import type { Session, User } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://ggmsdbfkyscmjesusmsz.supabase.co',
@@ -8,7 +7,7 @@ const supabase = createClient(
 );
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [violations, setViolations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +34,7 @@ export default function Dashboard() {
       setLoading(true);
       console.log('[Dashboard] fetching violations…');
 
-      const isAdmin = user.email?.includes('@admin');
+      const isAdmin = user?.email?.includes('@admin');
 
       const { data, error } = await supabase
         .from('violations')
