@@ -12,6 +12,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+  const timer = setTimeout(() => {
+    setLoading(false);                 // stop spinner after 5 s
+  }, 5000);
+  return () => clearTimeout(timer);
+}, []);
+
     const getUser = async () => {
       const {
         data: { session },
