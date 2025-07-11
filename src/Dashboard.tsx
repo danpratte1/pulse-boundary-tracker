@@ -1,27 +1,28 @@
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://ggmsdbfkyscmjesusmsz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbXNkYmZreXNjbWplc3VzbXN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIxNzM2MzQsImV4cCI6MjA2Nzc0OTYzNH0.gcZRosVQ9AW-WeQ7jdw0kabb9z4aX-pHYURwj3wBF4s'
+  'YOUR_PUBLIC_ANON_KEY_HERE'
 );
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [violations, setViolations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('Auth error:', error);
+        console.error('[Auth Error]', error.message);
+      }
+      if (!data.session) {
+        console.warn('[No Session] User not logged in');
+        setLoading(false); // stop loading even if no session
         return;
       }
-      if (session) setUser(session.user);
+      setUser(data.session.user);
     };
 
     getUser();
@@ -32,23 +33,22 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       setLoading(true);
-      console.log('[Dashboard] fetching violations…');
+      console.log('[Fetching Violations] for', user.email);
 
-      const isAdmin = user?.email?.includes('@admin');
+      const isAdmin = user.email.includes('@admin');
 
       const { data, error } = await supabase
         .from('violations')
         .select('*')
         .order('logged_at', { ascending: false });
 
-      if (error) console.error('Data error:', error);
-      else {
-        console.log('[Dashboard] rows returned:', data.length);
-        setViolations(isAdmin ? data : data.filter((v) => v.email === user.email));
+      if (error) {
+        console.error('[Data Fetch Error]', error.message);
+      } else {
+        setViolations(isAdmin ? data : data.filter(v => v.email === user.email));
       }
 
       setLoading(false);
-      console.log('[Dashboard] loading=false');
     };
 
     fetchData();
@@ -61,11 +61,13 @@ export default function Dashboard() {
 
   if (loading) return <p>Loading...</p>;
 
+  if (!user) return <p>No user session found. Are you signed in?</p>;
+
   return (
     <div style={{ padding: '2rem' }}>
-      <h2>{user?.email?.includes('@admin') ? 'Admin View' : 'My Violations'}</h2>
+      <h2>{user.email.includes('@admin') ? 'Admin View' : 'My Violations'}</h2>
       <ul>
-        {user?.email?.includes('@admin')
+        {user.email.includes('@admin')
           ? Object.entries(countByEmployee).map(([email, count]) => (
               <li key={email}>
                 {email}: {count} violations
