@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import type { Session, User } from '@supabase/supabase-js'; // ⬅ type-only import ✅
+import type {User } from '@supabase/supabase-js'; // ⬅ type-only import ✅
 
 /* ────────────────────────────────────────────────────────────────── */
 /* Supabase initialisation                                            */
